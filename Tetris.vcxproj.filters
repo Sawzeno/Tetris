@@ -18,6 +18,9 @@
     <ClCompile Include="tetris.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rawMode.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="matrix.h">
@@ -26,7 +29,10 @@
     <ClInclude Include="rawMode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="windows.h">
+    <ClInclude Include="window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -98,12 +98,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="rawMode.c" />
     <ClCompile Include="tetris.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="matrix.h" />
+    <ClInclude Include="platform.h" />
     <ClInclude Include="rawMode.h" />
-    <ClInclude Include="windows.h" />
+    <ClInclude Include="window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
