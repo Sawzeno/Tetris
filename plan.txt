@@ -193,3 +193,27 @@ HomeScreen Window 0
 GameScreen Window 1
 
 initTerminal(); -> rawMode , clearScreen , 
+
+
+a queue ->
+
+Tree Depth = {limit of drawing nested screens};
+Screen A -> Screen B -> ScreenC;
+
+add ScreenA <- screenA
+
+tree of rows;
+
+struct{
+  PixelRow** rows;
+  Screen* next;
+}
+
+Screen* temp;
+      0  <---- temp = screen[0]
+    /   \
+   0     0
+   |     |
+   |     temp->right
+temp->left
+

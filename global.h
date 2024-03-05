@@ -1,5 +1,5 @@
-#ifndef _CONFIG_H
-#define _CONFIG_H
+#ifndef _GLOBAL_H
+#define _GLOBAL_H
 
 #include "stdint.h"
 
@@ -7,11 +7,11 @@ typedef struct{
   uint64_t  RESX;
   uint64_t  RESY;
   uint64_t  PIXELSIZE;
-}Config;
+}Global;
 
-extern Config config;
+extern Global global;
 
-void initConfig();
+void initGlobals();
 #endif//CONFIG_H
 
 

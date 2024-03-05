@@ -4,91 +4,164 @@
 #include  <unistd.h>
 #include  <string.h>
 
-#include  "config.h"
+#include  "global.h"
+#include  "error.h"
 
-typedef struct Pixel    Pixel;
-typedef struct PixelRow PixelRow;
+typedef struct ScreenRow ScreenRow;
 typedef struct Buffer   Buffer;
 typedef struct Screen   Screen;
+typedef struct WindowManager  WindowManager;
+typedef enum   ScreenOrient   ScreenOrient;
 
-struct PixelRow{
-  char*       string;
-  PixelRow*   next;
-  uint64_t    size;
+Buffer* createBuffer  (uint64_t size);
+Buffer* createScreenBuffer  (uint64_t size);
+void    appendBuffer  (Buffer*  buffer  , char* string  , uint64_t size);
+Screen* createScreen  (uint64_t cols    , uint64_t rows , char* type);
+void    addScreen     (Screen*  parent  , Screen* child , ScreenOrient orient);
+void    render        (Screen*  screen);
+
+enum ScreenOrient{
+  HORZ,
+  VERT
 };
 
 struct Buffer{
-  char*     string;
-  uint64_t  size;
+  char*       string;
+  uint64_t    size;
+};
+
+struct ScreenRow{
+  char*       string;
+  ScreenRow*  currentScreenRow;
+  ScreenRow*  nextScreenRow;
+  uint64_t    size;
 };
 
 struct Screen{
   Buffer*     buffer;
-  PixelRow**  rows;
+  ScreenRow*  headrow;
   uint64_t    numrows;
   uint64_t    numcols;
+};
+
+struct WindowManager{
+  Buffer* outbuffer;
+  Screen** screens;
 };
 
 Buffer* createBuffer(uint64_t size){
 
   Buffer* buffer  = malloc(sizeof(Buffer));
-  if(buffer ==  NULL){
-    perror("maler : buffer global");
-    exit(EXIT_FAILURE);
-  }
+  ISNULL(buffer)
 
-  buffer->size  = size * config.PIXELSIZE;
+  buffer->size  = size ;
   buffer->string = calloc(buffer->size, sizeof(char));
-  if(buffer->string == NULL){
-    perror("maler : buffer string");
-  }
+  ISNULL(buffer->string)
 
   return buffer;
+}
+
+Buffer* createScreenBuffer(uint64_t size){
+
+  Buffer* buffer  = malloc(sizeof(Buffer));
+  ISNULL(buffer)
+
+  buffer->size  = size * global.PIXELSIZE;
+  buffer->string = calloc(buffer->size, sizeof(char));
+  ISNULL(buffer->string)
+
+  return buffer;
+}
+
+
+ScreenRow* createScreenRow(char* string , uint64_t size){
+  ScreenRow* screenrow  = malloc(sizeof(ScreenRow));
+  ISNULL(screenrow);
+
+  screenrow->string           = string;
+  screenrow->size             = size;
+  screenrow->currentScreenRow = NULL;
+  screenrow->nextScreenRow    = NULL;
+
+  return screenrow;
 }
 
 Screen* createScreen(uint64_t cols , uint64_t rows , char* type){
 
   Screen* screen  = malloc(sizeof(Screen));
-  if(screen == NULL){
-    perror("maler : screen");
-  }
+  ISNULL(screen)
 
   screen->numcols = cols;
   screen->numrows = rows;
-  screen->buffer  = createBuffer(screen->numcols * screen->numrows);
+  screen->buffer  = createScreenBuffer(screen->numcols * screen->numrows);
 
   for(size_t i = 0 ; i < screen->numcols * screen->numrows ; ++i){
-    strcpy(&(screen->buffer->string[i * config.PIXELSIZE]), type);
+    strcpy(&(screen->buffer->string[i * global.PIXELSIZE]), type);
   }
 
-  screen->rows    = calloc(screen->numrows , sizeof(PixelRow*));
-  if(screen->rows == NULL){
-    perror("maler : screen rows");
-  }
+  char*   rowstart  = screen->buffer->string;
+  uint64_t  stride  = screen->numcols * global.PIXELSIZE;
 
-  for(size_t i = 0 ; i < screen->numrows ; ++i){
-    PixelRow* row;
+  screen->headrow   = createScreenRow(rowstart, stride);
 
-    row = malloc(sizeof(PixelRow));
-    if(row  ==  NULL){
-      perror("screen rows row");
-    }
+  ScreenRow* head   = screen->headrow;
+  ScreenRow* next   = NULL;
 
-    row->string = &(screen->buffer->string[i * screen->numcols * config.PIXELSIZE]);
-    row->size = screen->numcols * config.PIXELSIZE;
-    row->next = NULL;
-    screen->rows[i] = row;
+  size_t  i = 0;
+  while(i < screen->numrows){
+    rowstart  = &(screen->buffer->string[i * stride]);
+    next  = createScreenRow(rowstart, stride);
+    head->currentScreenRow  = next;
+    head  = next;
+    next  = NULL;
+    ++i;
   }
 
   return screen;
 }
 
+
+void addScreen(Screen* parent, Screen* child, ScreenOrient orient) {
+  ScreenRow* parentCurrentRow = parent->headrow;
+  ScreenRow* parentNextRow    = parentCurrentRow;
+
+  ScreenRow* childCurrentRow  = child->headrow;
+
+  switch (orient) {
+
+    case VERT: {
+      while (parentCurrentRow != NULL && childCurrentRow != NULL) {
+        ScreenRow* parentNextRow = parentCurrentRow;
+        while (parentNextRow->nextScreenRow != NULL) {
+          parentNextRow = parentNextRow->nextScreenRow;
+        }
+
+        parentNextRow->nextScreenRow = childCurrentRow;
+
+        parentCurrentRow = parentCurrentRow->currentScreenRow;
+        childCurrentRow  = childCurrentRow->currentScreenRow;
+      }
+
+      break;
+    }
+
+
+    case HORZ: {
+      while (parentNextRow->currentScreenRow != NULL) {
+        parentNextRow = parentNextRow->currentScreenRow;
+      }
+      parentNextRow->currentScreenRow = child->headrow;
+      break;
+    }
+  }
+}
+
+
+
 void appendBuffer(Buffer* buffer , char* string , uint64_t size){
 
   char* new  = realloc(buffer->string, buffer->size + size);
-  if(new == NULL){
-    perror("realloc error : appendBuffer");
-  }
+  ISNULL(new)
 
   memcpy(&(new[buffer->size]), string, size);
 
@@ -97,59 +170,47 @@ void appendBuffer(Buffer* buffer , char* string , uint64_t size){
 }
 
 void render(Screen* screen){
+  ScreenRow endline;
+  endline.string            = "\n";
+  endline.size              = 1;
+  endline.currentScreenRow  = NULL;
+  endline.nextScreenRow     = NULL;
 
-  PixelRow endline;
-  endline.string  = "\n";
-  endline.size    = 1;
-  endline.next    = NULL;
+  Buffer* outbuffer = createBuffer(0);
+  ISNULL(outbuffer)
 
-  Buffer* outbuffer = malloc(sizeof(Buffer));
-  if(outbuffer == NULL){
-   perror("maler  : outbuffer"); 
-  }
-  outbuffer->size = 0;
-  outbuffer->string = malloc(sizeof(char) * outbuffer->size);
-  if(outbuffer  == NULL){
-    perror("maler : outbuffer string");
-  }
-  
-  for(size_t i = 0 ; i < screen->numrows ; ++i){
-    PixelRow* row = screen->rows[i];
-    while(row != NULL){
-      appendBuffer(outbuffer, row->string, row->size);
-      row = row->next;
+  ScreenRow* _currentScreenRow = screen->headrow;
+  ScreenRow* _nextScreenRow    = _currentScreenRow;
+
+  while (_currentScreenRow != NULL) {
+    while (_nextScreenRow != NULL) {
+      appendBuffer(outbuffer, _nextScreenRow->string, _nextScreenRow->size);
+      _nextScreenRow = _nextScreenRow->nextScreenRow;
     }
     appendBuffer(outbuffer, endline.string, endline.size);
+    _currentScreenRow = _currentScreenRow->currentScreenRow;
+    _nextScreenRow = _currentScreenRow;
   }
 
-  write(STDOUT_FILENO , "\x1b[2J\x1b[H", 7);
-  write(STDOUT_FILENO , outbuffer->string , outbuffer->size);
+  write(STDOUT_FILENO, "\x1b[2J\x1b[H", 7);
+  write(STDOUT_FILENO, outbuffer->string, outbuffer->size);
+
+  free(outbuffer->string);
+  free(outbuffer);
 }
 
-void addScreen(Screen* parent , Screen* child){
 
-  PixelRow* row;
-  for(size_t i = 0 ; i < child->numrows ; ++i){
-    row = parent->rows[i];
-    while(row->next != NULL){
-      row = row->next;
-    }
-    row->next = child->rows[i];
-  }
-}
 
 int main(){
 
-  initConfig();
+  initGlobals();
 
-  Screen* screenA  =  createScreen(config.RESX , config.RESY , "█");
-  Screen* screenB  =  createScreen(1 , config.RESY , "⏽");
-  Screen* screenC  =  createScreen(config.RESX/2 , config.RESY , "▓");
+  Screen* screenA  =  createScreen(global.RESX    , global.RESY , "█");
+  Screen* screenB  =  createScreen(1  , global.RESY , "🮘");
+  Screen* screenC  =  createScreen(10  , global.RESY , "");
 
-  addScreen(screenB, screenC);
-  addScreen(screenA, screenB);
-  //input();
-  //update();
+  addScreen(screenA, screenB , VERT);
+  addScreen(screenB, screenC , VERT);
   render(screenA);
 
   return 0;
