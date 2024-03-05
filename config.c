@@ -3,8 +3,8 @@
 Config config;
 
 void initConfig(void){
-  config.RESX       = 8;
-  config.RESY       = 8;
+  config.RESX       = 64;
+  config.RESY       = 32;
   config.PIXELSIZE  = 6;
 }
 

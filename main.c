@@ -126,15 +126,31 @@ void render(Screen* screen){
   write(STDOUT_FILENO , outbuffer->string , outbuffer->size);
 }
 
+void addScreen(Screen* parent , Screen* child){
+
+  PixelRow* row;
+  for(size_t i = 0 ; i < child->numrows ; ++i){
+    row = parent->rows[i];
+    while(row->next != NULL){
+      row = row->next;
+    }
+    row->next = child->rows[i];
+  }
+}
+
 int main(){
 
   initConfig();
 
-  Screen* screen  =  createScreen(config.RESX , config.RESY , "󰘷");
+  Screen* screenA  =  createScreen(config.RESX , config.RESY , "█");
+  Screen* screenB  =  createScreen(1 , config.RESY , "⏽");
+  Screen* screenC  =  createScreen(config.RESX/2 , config.RESY , "▓");
 
+  addScreen(screenB, screenC);
+  addScreen(screenA, screenB);
   //input();
   //update();
-  render(screen);
+  render(screenA);
 
   return 0;
 }
