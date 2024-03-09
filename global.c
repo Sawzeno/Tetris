@@ -3,9 +3,9 @@
 Global global;
 
 void initGlobals(void){
-  global.RESX       = 64;
-  global.RESY       = 32;
-  global.PIXELSIZE  = 6;
+  global.RESX       = 32;
+  global.RESY       = 16;
+  global.PIXELSIZE  = 23;
 
 }
 

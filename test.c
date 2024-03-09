@@ -1,10 +1,21 @@
 #include<stdio.h>
 #include<inttypes.h>
-#include"config.h"
+
+typedef struct Stack Stack;
+typedef struct Buffer Buffer;
+
+struct Buffer{
+  
+}
+
+struct Stack{
+
+};
 
 int main(){
 
-  initConfig();
-  printf("RESX : %"PRIu64"\n", config.RESX);
+  Stack* stack = createStack(Screen* HeadScreen);
+
+
   return 0;
 }

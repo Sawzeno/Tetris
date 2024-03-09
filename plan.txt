@@ -217,3 +217,123 @@ Screen* temp;
    |     temp->right
 temp->left
 
+
+Winndow* window = powerON();
+createWindow(Orient orient);
+
+Orient  orientMain  = {NULL , MAX , MAX , "*"}
+
+STACK []<--[one way input]
+data Orient <- Screen
+
+for(screen in screens ){
+  addScreen(Head , screen , Orient);
+  }
+createWindow(orientMain);
+----NO STACK REQUIRED----
+A<-B (VERT)
+B<-C (VERT)
+
+A<-C (VERT) == A<-B<-C
+
+whats happening = A<-D  (HORZ)  ==  A<-B<-C<-D
+whats desired   = A<-D  (HORZ)  ==  A<-D<-B<-C
+
+WindowTree
+            A
+           / \
+          B   D
+         /
+        C
+
+  [LEFT]  ==  [VERT]
+  [RIGHT] ==  [HORZ]
+
+Depth First Draw for screens , 
+
+Screen* MainScreen = createScreen(RESX , RESY , "*");
+
+createWindow(MainScreen);
+
+struct ScreenNode{
+  Screen* screen;
+  ScreenOrient orient;
+  Screen* nextVERT;
+  Screen* nextHORZ;
+  }
+
+ScreenNode->screen    = screenA;
+screenNode->nextVERT  = ScreenB;
+ScreenNode->nextHORZ  = ScreenD;
+
+createScreenTree(Screen* child){
+  if(child == NULL){
+      return;
+    }
+  createScreenTree(screenNode->nextVERT);
+  createScreenTree(screenNode->nextHORZ);
+  addScreen(ScreenNode->screen , ScreenNode->nextVERT , orient);
+}
+
+Window* window = initGame();
+
+Screen* MainScreen  = window->screen;
+
+Screen* SideScreen  = createScreen(MainScreen , 20 , VERT);
+Screen* Console     = createScreen(MainScreen , 20 , HORZ);
+
+createWindow{
+  Window* window = malloc(sizeof(Window));
+  ISNULL(window);
+
+  window->mainScreen = createScreen(window.avaialableX , window.avaiableY , )
+  
+  
+  return window;
+}
+
+  
+  // //binding scene
+  // for(size_t i = 0 ; i < child->numcols * child->numrows ; ++i){
+  //   strcpy(&(child->buffer->string[i * global.PIXELSIZE]), type);
+  // }
+
+----------------------------------------------------------------
+
+
+void mapScreenBuffer(Screen* screen){
+
+  if(screen == NULL){
+    return;
+  }
+  screen->buffer   = createScreenBuffer(screen->numcols * screen->numrows);
+
+  screen->scene    = NULL;
+
+  char*   rowstart  = screen->buffer->string;
+  uint64_t  stride  = screen->numcols * global.PIXELSIZE;
+
+  screen->headrow    = createScreenRow(rowstart, stride);
+
+  ScreenRow* head   = screen->headrow;
+  ScreenRow* next   = NULL;
+
+  size_t  i = 0;
+  while(i < screen->numrows){
+    rowstart  = &(screen->buffer->string[i * stride]);
+    next  = createScreenRow(rowstart, stride);
+    head->currentScreenRow  = next;
+    head  = next;
+    next  = NULL;
+    ++i;
+  }
+}
+
+----------------------------------------------------------------
+
+  bindScene(screenC , sceneC);
+  Scene*  sceneC    = createScene(global.RESX     , global.RESY   , "░");
+  Screen* screenC   = createScreen(screenA, VERT , 40);
+  printf("%"PRIu64":  %"PRIu64"\n", screenA->numrows , screenA->numcols);
+
+
