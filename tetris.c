@@ -13,6 +13,8 @@
 #include <unistd.h>
 
 #elif PLATFORM == WINDOWS
+#include <Windows.h>
+#include <stdbool.h>
 
 #endif
 
@@ -27,19 +29,19 @@ typedef struct Object {
     int y;
 } Object;
 
-void initObject(Object* object, char type, int x, int y)
+void initObject(Object *object, char type, int x, int y)
 {
     object->type = type;
     object->x = x;
     object->y = y;
 }
 
-void bufferFree(Buffer* buff);
+void bufferFree(Buffer *buff);
 void refreshScreen();
-void move(Object* object, int x, int y);
-void spawnTet(Screen* s, matrix* m);
+void move(Object *object, int x, int y);
+void spawnTet(Screen *s, matrix *m);
 // void update(Screen* s);
-char* pixel(Screen* s, int x, int y);
+char *pixel(Screen *s, int x, int y);
 
 // objects
 Screen screen;
@@ -61,7 +63,7 @@ int main()
     //-----------------------------------------------------------------Header
 
     initScreen(&header, 'X', 4, 66);
-    header.buffer = (char*)malloc(header.rows * header.cols * sizeof(char));
+    header.buffer = (char *)malloc(header.rows * header.cols * sizeof(char));
 
     // header buffer
     for (int i = 0; i < header.rows; i++) {
@@ -75,7 +77,7 @@ int main()
     //-----------------------------------------------------------------Screen
 
     initScreen(&screen, '*', 32, 66);
-    screen.buffer = (char*)malloc(screen.rows * screen.cols * sizeof(char));
+    screen.buffer = (char *)malloc(screen.rows * screen.cols * sizeof(char));
     // screen buffer
     for (int i = 0; i < screen.rows; i++) {
         for (int j = 0; j < screen.cols - 2; j++) {
@@ -88,7 +90,7 @@ int main()
     //-----------------------------------------------------------------Console
 
     initScreen(&console, '+', 4, 66);
-    console.buffer = (char*)malloc(console.rows * console.cols * sizeof(char));
+    console.buffer = (char *)malloc(console.rows * console.cols * sizeof(char));
     // console buffer
     for (int i = 0; i < console.rows; i++) {
         for (int j = 0; j < console.cols - 2; j++) {
@@ -145,12 +147,17 @@ int main()
     return 0;
 
 #elif PLATFORM == WINDOWS
-    // @Implement
+    struct WindowsConsoleMode modeAtStartup;
+    saveConsoleMode(&modeAtStartup);
+    enableRawMode();
+    // Game code goes here...
+    restoreConsoleMode(&modeAtStartup);
+    return 0;
 
 #endif
 }
 
-void spawnTet(Screen* s, matrix* m)
+void spawnTet(Screen *s, matrix *m)
 {
     for (int i = 0; i < m->rows; i++) {
         for (int j = 0; j < m->cols; j++) {
@@ -176,8 +183,8 @@ void refreshScreen()
 {
 #if PLATFORM == LINUX
     Buffer buffer = {NULL, 0};
-    appendBuffer(&buffer, (char*)"\x1b[2J", 4);
-    appendBuffer(&buffer, (char*)"\x1b[H", 3);
+    appendBuffer(&buffer, (char *)"\x1b[2J", 4);
+    appendBuffer(&buffer, (char *)"\x1b[H", 3);
     write(STDOUT_FILENO, buffer.b, buffer.len);
     bufferFree(&buffer);
 
