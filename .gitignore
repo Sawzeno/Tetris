@@ -419,3 +419,12 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# moepadding configuration
+.mpad
+
+# clang-format
+.clang-format
+
+# VS Code
+.vscode/
