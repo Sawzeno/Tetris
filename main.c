@@ -13,22 +13,22 @@ typedef struct Scene    Scene;
 typedef struct Screen   Screen;
 typedef struct Window   Window;
 typedef struct ScreenRow      ScreenRow;
+typedef struct ScreenRowList  ScreenRowList;
 typedef enum   ScreenOrient   ScreenOrient;
 
 void        appendBuffer        (Buffer*  buffer  , char* string  , uint64_t size);
-Buffer*     createScreenBuffer  (uint64_t size);
+Buffer*     createBuffer        (uint64_t size);
 void        mapScreenBuffer     (Screen* screen);
-Screen*     createScreen        (Screen* parent , ScreenOrient orient , uint64_t percentage);
+Screen*     splitScreen        (Screen* parent , ScreenOrient orient , uint64_t percentage);
 void        addScreen           (Screen* parent, Screen* child, ScreenOrient orient);
 Scene*      createScene         (uint64_t limitX , uint64_t limitY , char* type);
 ScreenRow*  createScreenRow     (char*  string , uint64_t size);
 void        updateScreen        (Screen*  screen);
-void        render              (Screen*  screen);
+void        render              (Window* window);
 
 enum ScreenOrient{
   HORZ,
   VERT,
-  HEAD
 };
 
 struct Pixel{
@@ -53,25 +53,31 @@ struct Scene{
 
 struct ScreenRow{
   char*       string;
-  ScreenRow*  currentScreenRow;
+  ScreenRow*  nextRow;
   ScreenRow*  nextScreenRow;
   uint64_t    size;
 };
 
+struct ScreenRowList{
+  ScreenRow*  head;
+  uint64_t    size;
+};
+
 struct Screen{
-  Buffer*     buffer;
   Scene*      scene;
+  Buffer*     buffer;
+  ScreenRowList*  screenrows;
   Screen*     nextVERT;
   Screen*     nextHORZ;
-  ScreenRow*  headrow;
   uint64_t    numrows;
   uint64_t    numcols;
 };
 
 struct Window{
-  Screen* top;
+  Screen*     top;
+  Buffer*     buffer;
+  uint64_t    size;
 };
-
 
 void appendBuffer(Buffer* buffer , char* string , uint64_t size){
 
@@ -84,7 +90,7 @@ void appendBuffer(Buffer* buffer , char* string , uint64_t size){
   buffer->size    +=  size;
 }
 
-Buffer* createScreenBuffer(uint64_t size){
+Buffer* createBuffer(uint64_t size){
 
   Buffer* buffer  = malloc(sizeof(Buffer));
   ISNULL(buffer)
@@ -93,8 +99,6 @@ Buffer* createScreenBuffer(uint64_t size){
 
   buffer->string = calloc(buffer->size, sizeof(char));
   ISNULL(buffer->string)
-  memset(buffer->string, 0, buffer->size);
-
 
   return buffer;
 }
@@ -105,16 +109,38 @@ ScreenRow* createScreenRow(char* string , uint64_t size){
 
   screenrow->string           = string;
   screenrow->size             = size;
-  screenrow->currentScreenRow = NULL;
+  screenrow->nextRow          = NULL;
   screenrow->nextScreenRow    = NULL;
 
   return screenrow;
 }
 
-Screen* createScreen(Screen* parent , ScreenOrient orient , uint64_t percentage){
+ScreenRowList* createScreenRows(uint64_t numrows){
+
+  ScreenRowList* list = malloc(sizeof(ScreenRowList));
+  ISNULL(list)
+
+  list->size  = numrows;
+
+  ScreenRow* temphead = NULL;
+
+  for(int i = 0 ; i < list->size ; ++i){
+    if(list->head == NULL){
+      list->head  =  createScreenRow(NULL, 0);
+      temphead  = list->head;
+    }else{
+      temphead->nextRow = createScreenRow(NULL, 0);
+      temphead  = temphead->nextRow;
+    }
+  }
+
+  return list;
+}
+
+Screen* splitScreen(Screen* parent , ScreenOrient orient , uint64_t percentage){
 
   if(parent == NULL){
-    orient  = HEAD;
+    return NULL;
   }
 
   Screen* child  = malloc(sizeof(Screen));
@@ -145,11 +171,6 @@ Screen* createScreen(Screen* parent , ScreenOrient orient , uint64_t percentage)
       parent->nextVERT  = NULL;
       break;
     }
-    case  HEAD  : {
-      child->numrows  = global.RESY;
-      child->numcols  = global.RESX;
-      break;
-    }
   }
 
   mapScreenBuffer(child);
@@ -158,60 +179,13 @@ Screen* createScreen(Screen* parent , ScreenOrient orient , uint64_t percentage)
   return child;
 }
 
-void mapScreenBuffer(Screen* screen) {
-  if (screen == NULL) {
-    return;
-  }
-
-  if(screen->buffer != NULL){
-    free(screen->buffer);
-  }
-
-
-  screen->buffer = createScreenBuffer(screen->numcols * screen->numrows);
-
-  ScreenRow* existingRows = screen->headrow;
-
-  char*       rowstart  = screen->buffer->string;
-  uint64_t    stride    = screen->numcols * global.PIXELSIZE;
-  ScreenRow*  head;
-  ScreenRow*  next;
-  if(existingRows == NULL){
-
-    screen->headrow = createScreenRow(rowstart, stride);
-    head = screen->headrow;
-    next = NULL;
-
-    size_t i = 0;
-    while(i < screen->numrows){
-      i++;
-      rowstart = &(screen->buffer->string[i * stride]);
-      next = createScreenRow(rowstart, stride);
-      head->currentScreenRow = next;
-      head = next;
-      next = NULL;
-    }
-
-  }else{
-    head = existingRows;
-    next = NULL;
-
-    size_t i = 0;
-    while (i < screen->numrows) {
-      rowstart = &(screen->buffer->string[i * stride]);
-      head->string  = rowstart;
-      head->size    = stride;
-      head = next;
-      ++i;
-    }
-  }
-}
 
 void addScreen(Screen* parent, Screen* child, ScreenOrient orient) {
 
   if(parent == NULL){
     return;
   }
+
   ScreenRow* parentCurrentRow = parent->headrow;
   ScreenRow* parentNextRow    = parentCurrentRow;
 
@@ -243,9 +217,6 @@ void addScreen(Screen* parent, Screen* child, ScreenOrient orient) {
       break;
     }
 
-    case HEAD:  {
-      break;
-    }
   }
 }
 
@@ -285,50 +256,39 @@ void updateScreen(Screen* screen) {
 
 }
 
-void render(Screen* screen){
-  ScreenRow endline;
-  endline.string            = "\n";
-  endline.size              = 1;
-  endline.currentScreenRow  = NULL;
-  endline.nextScreenRow     = NULL;
 
-  Buffer* outbuffer = createScreenBuffer(0);
+void render(Window* window){
+  Window* activeWindow  =  window;
 
-  ScreenRow* _currentScreenRow = screen->headrow;
-  ScreenRow* _nextScreenRow    = _currentScreenRow;
-
-
-  while (_currentScreenRow != NULL) {
-    _nextScreenRow = _currentScreenRow;
-    while (_nextScreenRow != NULL) {
-      appendBuffer(outbuffer, _nextScreenRow->string, _nextScreenRow->size);
-      _nextScreenRow = _nextScreenRow->nextScreenRow;
-    }
-    appendBuffer(outbuffer, endline.string, endline.size);
-    _currentScreenRow = _currentScreenRow->currentScreenRow;
-  }
-
-  write(STDOUT_FILENO, "\x1b[2J\x1b[H", 7);
-  write(STDOUT_FILENO, outbuffer->string, outbuffer->size);
-
-  free(outbuffer->string);
-  free(outbuffer);
+  write(STDOUT_FILENO , window->buffer , window->size);
 }
 
-struct Window{
-
-  Screen* top;
-
-
-};
-
 Window* createWindow(){
-  Window* window = malloc(sizeof(Window));
+  Window* window  = malloc(sizeof(Window));
   ISNULL(window)
 
-  window->top  = createScreen(NULL, HEAD, 100);
-  
+  window->size    = global.RESX * global.RESY;
+  window->buffer  = createWindowBuffer(window->size); 
+
+  Screen* screen  = malloc(sizeof(Screen));
+  ISNULL(screen)
+
+  screen->numcols       = global.RESX;
+  screen->numrows       = global.RESY;
+  screen->nextHORZ      = NULL;
+  screen->nextVERT      = NULL;
+  screen->scene         = NULL;
+
+  screen->buffer        = getScreenBuffer(window , screen->numrows * screen->numcols);
+  mapScreenBuffer(screen); 
   return window;
+}
+
+void mapScreenBuffer(Screen* screen){
+  
+  screen->buffer  = createBuffer(screen->numcols * screen->numrows);
+
+   
 }
 
 int main(){
