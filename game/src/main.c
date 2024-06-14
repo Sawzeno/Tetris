@@ -1,5 +1,5 @@
-#include  "utils.h"
-#include <unistd.h>
+#include  "defines.h"
+#include  "core/logger.h"
 
 #define ROWS  32
 #define COLS  64
@@ -48,6 +48,7 @@ struct  Screen{
 
 struct  ScreenRow{
   u64   len;
+  u64   clippingValue;
   char* windowbufferline;
   ScreenRow*  leftrow;
   ScreenRow*  rightrow;
@@ -124,11 +125,13 @@ Window* createWindow(u64 rows, u64 cols, char type){
     if(i == 0){
       charrows[i].windowbufferline  = window->buffer->data + buffindex;
       charrows[i].len               = screen->numcols;
+      charrows[i].clippingValue     = 0;
       charrows[i].framebufferrow    = &(charbuffer->rows[i]);
       buffindex                    += charrows[i].len;
 
       nullrows[i].windowbufferline  = window->buffer->data + buffindex;
       nullrows[i].len               = LINEBREAK_SIZE;
+      nullrows[i].clippingValue     = 0;
       nullrows[i].framebufferrow   = &(nullbuffer->rows[i]);
       buffindex                    += nullrows[i].len;
       temp  = &nullrows[i];
@@ -136,11 +139,13 @@ Window* createWindow(u64 rows, u64 cols, char type){
     }else{
       charrows[i].windowbufferline  = window->buffer->data + buffindex;
       charrows[i].len               = screen->numcols;
+      charrows[i].clippingValue     = 0;
       charrows[i].framebufferrow    = &(charbuffer->rows[i]);
       buffindex                    += charrows[i].len;
 
       nullrows[i].windowbufferline  = window->buffer->data + buffindex;
       nullrows[i].len               = LINEBREAK_SIZE;
+      nullrows[i].clippingValue     = 0;
       nullrows[i].framebufferrow    = &(nullbuffer->rows[i]);
       buffindex                    += nullrows[i].len;
       temp->rightrow = &nullrows[i];
@@ -174,6 +179,7 @@ Screen* ScreenSplitVert(Window* window ,Screen* parent, u64 percent, FrameBuffer
   for(u16 i = 0; i < parent->numrows ; ++i){
     parentrows[i].len               = parent->numcols;
     childrows [i].len               = child->numcols;
+    childrows [i].clippingValue     = 0;
     childrows [i].windowbufferline  = parentrows[i].windowbufferline + parentrows[i].len;
     childrows [i].framebufferrow    = &(framebuffer->rows[i]);
     if(parentrows[i].leftrow == NULL){
@@ -195,14 +201,32 @@ Screen* ScreenSplitVert(Window* window ,Screen* parent, u64 percent, FrameBuffer
   return child;
 }
 
-Screen* ScreenSplitHorz(Window* window, Screen* parent, u64 percent, FrameBuffer* frambuffer){
+Screen* ScreenSplitHorz(Window* window, Screen* parent, u64 percent, FrameBuffer* framebuffer){
   UDEBUG("-------------------SPLIT SCREEN HORZ--------------");
   Screen* child  = calloc(1, sizeof(Screen));
   MEMERR(child);
   u64 prows = parent->numrows;
   u64 crows = (prows * percent) / 100;
+  parent->numrows -=  crows;
+  child->numrows  = crows;
+  child->numcols  = parent->numcols;
+  child->framebuffer = framebuffer; 
+  UDEBUG("-------------------ASSIGNING BUFFERS--------------");
+  ScreenRow* parentRows  = parent->rows;
+  ScreenRow* childRows   = parent->rows + parent->numrows;
 
-  
+  for(u16 i = 0; i < child->numrows; ++i){
+    childRows[i].framebufferrow  = &(child->framebuffer->rows[i]);
+  }
+  child->rows = childRows;
+  Screen* temp  = parent->horzchild;
+  if(temp == NULL){
+    parent->horzchild = child;
+  }else{
+    parent->horzchild = child;
+    child->horzchild  = temp;
+  }
+  child->vertchild  = NULL;
   return child;
 }
 
@@ -262,11 +286,16 @@ ScreenRow*  getScreenRows (Window* window, u64 num){
 
 int main(void){
   Window* win = createWindow(ROWS, COLS, '*');
-  Screen* screen  = win->topscreen;
-  FrameBuffer* framebufferA  = createFrameBuffer(64, 64, '#');
-  FrameBuffer* framebufferB  = createFrameBuffer(64, 64, '+');
-  Screen* splitA  = ScreenSplitVert(win, screen, 50, framebufferA);
-  Screen* splitB  = ScreenSplitVert(win, screen, 50, framebufferB); 
+  Screen* screenA  = win->topscreen;
+  FrameBuffer*  framebufferB  = createFrameBuffer(64, 64, '#');
+  FrameBuffer*  framebufferC  = createFrameBuffer(64, 64, '+');
+  FrameBuffer*  framebufferD  = createFrameBuffer(64, 64, '-');
+  FrameBuffer*  framebufferE  = createFrameBuffer(64, 64, '0');
+
+  Screen* screenB  = ScreenSplitVert(win, screenA, 50, framebufferB);
+  Screen* screenC  = ScreenSplitVert(win, screenB, 50, framebufferC); 
+  Screen* screenD  = ScreenSplitHorz(win, screenC, 50, framebufferD);
+  Screen* screenE  = ScreenSplitHorz(win, screenA, 50, framebufferE);
   update(win);
   render(win);
   return 0;

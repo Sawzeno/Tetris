@@ -3,4 +3,4 @@
 #define LINUX    0
 #define WINDOWS  1
 
-#define PLATFORM WINDOWS
+#define PLATFORM LINUX

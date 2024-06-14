@@ -1,11 +1,12 @@
-#include "rawMode.h"
-#include "platform.h"
+#include "rawmode.h"
+#include "platform/platform.h"
 #include <stdio.h>
 
 #if PLATFORM == LINUX
-#include <iconv.h>
-#include <termios.h>
-#include <unistd.h>
+#include  <iconv.h>
+#include  <termios.h>
+#include  <unistd.h>
+#include  <stdlib.h>
 
 struct editorConfig E;
 

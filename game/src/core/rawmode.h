@@ -1,4 +1,4 @@
-#include "platform.h"
+#include "platform/platform.h"
 #include <stdbool.h>
 #define CTRL_KEY(k) ((k) & 0x1f) // sets upper three bits to zero
 
