@@ -1,4 +1,4 @@
-# <span style="color: blue; font-size: 3em;">🎮 Tetris in C</span>
+# <span style="color: blue; font-size: 3em;">🎮 Tetris in C [Under Construction]</span>
 
 Welcome to my Tetris project, built from scratch in C as my first learning project. This project has helped me understand the basics of game development, C programming, and Graphics Programming.
 ---
