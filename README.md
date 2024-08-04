@@ -1,6 +1,6 @@
 # <span style="color: blue; font-size: 3em;">🎮 Tetris in C [Under Development]</span>
 
-Welcome to my Tetris project, built from scratch in C. This project has helped me understand the basics of game development, C programming, and Graphics Programming.
+Tetris in Terminal, built from scratch in C. This project has helped me understand the basics of game development, C programming, and Graphics Programming.
 ---
 
 ## 🔧 Building and Running the Project
